@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const app = express();
 
@@ -5,21 +7,18 @@ app.use(express.urlencoded({ extended: true }));
 
 const twilio = require('twilio');
 
-// 🔐 Replace these with your real credentials
-require('dotenv').config();
-
 const accountSid = process.env.ACCOUNT_SID;
 const authToken = process.env.AUTH_TOKEN;
 
 const client = twilio(accountSid, authToken);
 
-// ✅ TEST ROUTE (this is what was missing)
+// ✅ TEST ROUTE
 app.get('/send-sms', async (req, res) => {
   try {
     await client.messages.create({
       body: "Test SMS from your parking system 🚗",
-      from: '+18339664635',
-      to: '+19704570677'
+      from: '+18339664635', // your Twilio number
+      to: '+19704570677'    // your phone (for testing)
     });
 
     res.send('SMS sent!');
@@ -29,21 +28,16 @@ app.get('/send-sms', async (req, res) => {
   }
 });
 
-// homepage
-app.get('/', (req, res) => {
-  res.send('Server is running');
-});
-
-app.listen(3000, () => {
-  console.log('Server running on port 3000');
-});
-
+// ✅ MAIN AUTOMATION ROUTE (used by Twilio Studio)
 app.post('/request-sms', async (req, res) => {
   try {
+    console.log("Incoming request:", req.body);
+
     const from = req.body.From;
 
     await client.messages.create({
-      body: "Pay your parking violation here: https://buy.stripe.com/00gbM58Co6Lt3zqcMP",
+      body: "S&K Parking Services
+Click here to pay for parking violation: https://buy.stripe.com/00gbM58Co6Lt3zqcMP",
       from: '+18339664635',
       to: from
     });
@@ -53,4 +47,16 @@ app.post('/request-sms', async (req, res) => {
     console.error(err);
     res.sendStatus(500);
   }
+});
+
+// ✅ HOMEPAGE
+app.get('/', (req, res) => {
+  res.send('Server is running');
+});
+
+// ✅ REQUIRED FOR RENDER
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
