@@ -31,22 +31,33 @@ app.get('/send-sms', async (req, res) => {
 // ✅ MAIN AUTOMATION ROUTE (used by Twilio Studio)
 app.post('/request-sms', async (req, res) => {
   try {
-    console.log("Incoming request:", req.body);
-
     const from = req.body.From;
+    const lang = req.body.lang;
 
-    await client.messages.create({
-      body: `S&K Parking Services
+    // ✅ respond immediately
+    res.sendStatus(200);
+
+    let message;
+
+    if (lang === 'es') {
+      message = `S&K Servicios de Estacionamiento
+Haga clic aquí para pagar y retirar el inmovilizador:
+https://buy.stripe.com/00gbM58Co6Lt3zqcMP`;
+    } else {
+      message = `S&K Parking Services
 Click here to pay to remove boot:
-https://buy.stripe.com/00gbM58Co6Lt3zqcMP`,
+https://buy.stripe.com/00gbM58Co6Lt3zqcMP`;
+    }
+
+    // send SMS
+    client.messages.create({
+      body: message,
       from: '+18339664635',
       to: from
     });
 
-    res.sendStatus(200);
   } catch (err) {
     console.error(err);
-    res.sendStatus(500);
   }
 });
 
