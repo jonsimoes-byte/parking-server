@@ -36,8 +36,9 @@ app.post('/request-sms', async (req, res) => {
     const from = req.body.From;
 
     await client.messages.create({
-      body: "S&K Parking Services
-Click here to pay for parking violation: https://buy.stripe.com/00gbM58Co6Lt3zqcMP",
+      body: `S&K Parking Services
+Click here to pay to remove boot:
+https://buy.stripe.com/00gbM58Co6Lt3zqcMP`,
       from: '+18339664635',
       to: from
     });
