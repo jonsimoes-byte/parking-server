@@ -42,10 +42,12 @@ app.post('/request-sms', async (req, res) => {
     if (lang === 'es') {
       message = `S&K Servicios de Estacionamiento
 Pague aquí para retirar el inmovilizador:
+
 https://buy.stripe.com/5kQ7sK7dSaO49EpgOq4ZG05`;
     } else {
       message = `S&K Parking Services
 Click here to pay to remove boot:
+
 https://buy.stripe.com/00gbM58Co6Lt3zqcMP`;
     }
 
