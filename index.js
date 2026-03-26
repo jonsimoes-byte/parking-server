@@ -43,12 +43,12 @@ app.post('/request-sms', async (req, res) => {
       message = `S&K Servicios de Estacionamiento
 Pague aquí para retirar el inmovilizador:
 
-https://buy.stripe.com/5kQ7sK7dSaO49EpgOq4ZG05`;
+https://bit.ly/SKParkingesp`;
     } else {
       message = `S&K Parking Services
-Click here to pay to remove boot:
+Click here to pay and remove boot:
 
-https://buy.stripe.com/00gbM58Co6Lt3zqcMP`;
+https://bit.ly/SKParking`;
     }
 
     // send SMS (runs after response)
