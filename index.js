@@ -17,8 +17,8 @@ app.get('/send-sms', async (req, res) => {
   try {
     await client.messages.create({
       body: "Test SMS from your parking system 🚗",
-      from: '+18339664635', // your Twilio number
-      to: '+19704570677'    // your phone (for testing)
+      from: '+18339664635',
+      to: '+19704570677' // your number for testing
     });
 
     res.send('SMS sent!');
@@ -28,28 +28,28 @@ app.get('/send-sms', async (req, res) => {
   }
 });
 
-// ✅ MAIN AUTOMATION ROUTE (used by Twilio Studio)
+// ✅ MAIN ROUTE (Twilio hits this)
 app.post('/request-sms', async (req, res) => {
   try {
     const from = req.body.From;
     const lang = req.body.lang;
 
-    // ✅ respond immediately
+    // ✅ respond immediately (prevents call delay/cutoff)
     res.sendStatus(200);
 
     let message;
 
     if (lang === 'es') {
       message = `S&K Servicios de Estacionamiento
-Haga clic aquí para pagar y retirar el inmovilizador:
-https://buy.stripe.com/00gbM58Co6Lt3zqcMP`;
+Pague aquí para retirar el inmovilizador:
+https://buy.stripe.com/5kQ7sK7dSaO49EpgOq4ZG05`;
     } else {
       message = `S&K Parking Services
 Click here to pay to remove boot:
 https://buy.stripe.com/00gbM58Co6Lt3zqcMP`;
     }
 
-    // send SMS
+    // send SMS (runs after response)
     client.messages.create({
       body: message,
       from: '+18339664635',
