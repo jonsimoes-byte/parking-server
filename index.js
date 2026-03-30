@@ -3,47 +3,94 @@ require('dotenv').config();
 const express = require('express');
 const app = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 const twilio = require('twilio');
 const axios = require('axios');
+const multer = require('multer');
+const FormData = require('form-data');
+
+const upload = multer();
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const accountSid = process.env.ACCOUNT_SID;
 const authToken = process.env.AUTH_TOKEN;
 
 const client = twilio(accountSid, authToken);
 
-// 🚀 Plate recognition function
-async function recognizePlateFromUrl(imageUrl) {
+//
+// 🔥 HELPER: Scan plate from uploaded file
+//
+async function recognizePlateFromBuffer(buffer) {
   try {
+    const formData = new FormData();
+
+    formData.append('upload', buffer, {
+      filename: 'plate.jpg'
+    });
+
+    formData.append('regions', 'us');
+
     const response = await axios.post(
-  'https://api.platerecognizer.com/v1/plate-reader/',
-  {
-    upload_url: imageUrl,
-    regions: ["us"]
-  },
-  {
-    headers: {
-      Authorization: `Token ${process.env.PLATE_API_KEY}`
-    }
-  }
-);
+      'https://api.platerecognizer.com/v1/plate-reader/',
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+          Authorization: `Token ${process.env.PLATE_API_KEY}`
+        }
+      }
+    );
 
     const results = response.data.results;
 
     if (results && results.length > 0) {
-      return results[0].plate;
+      return results[0].plate.toUpperCase();
     }
 
     return null;
+
   } catch (err) {
     console.error('Plate API error:', err.response?.data || err.message);
     return null;
   }
 }
 
-// ✅ TEST ROUTE
+//
+// 🔥 OPTIONAL: scan from URL (for testing)
+//
+async function recognizePlateFromUrl(imageUrl) {
+  try {
+    const response = await axios.post(
+      'https://api.platerecognizer.com/v1/plate-reader/',
+      {
+        upload_url: imageUrl,
+        regions: ["us"]
+      },
+      {
+        headers: {
+          Authorization: `Token ${process.env.PLATE_API_KEY}`
+        }
+      }
+    );
+
+    const results = response.data.results;
+
+    if (results && results.length > 0) {
+      return results[0].plate.toUpperCase();
+    }
+
+    return null;
+
+  } catch (err) {
+    console.error('Plate API error:', err.response?.data || err.message);
+    return null;
+  }
+}
+
+//
+// ✅ TEST SMS
+//
 app.get('/send-sms', async (req, res) => {
   try {
     await client.messages.create({
@@ -59,13 +106,15 @@ app.get('/send-sms', async (req, res) => {
   }
 });
 
-// ✅ MAIN SMS ROUTE
+//
+// ✅ MAIN SMS AUTOMATION
+//
 app.post('/request-sms', async (req, res) => {
   try {
     const from = req.body.From;
     const lang = req.body.lang;
 
-    res.sendStatus(200);
+    res.sendStatus(200); // respond instantly
 
     let message;
 
@@ -81,7 +130,7 @@ Click here to pay and remove boot:
 https://bit.ly/SKParking`;
     }
 
-    client.messages.create({
+    await client.messages.create({
       body: message,
       from: '+18339664635',
       to: from
@@ -92,7 +141,46 @@ https://bit.ly/SKParking`;
   }
 });
 
-// 🚀 PLATE SCAN ROUTE
+//
+// 🚀 PHONE UPLOAD PAGE (THIS IS YOUR REAL TOOL)
+//
+app.get('/upload', (req, res) => {
+  res.send(`
+    <h2>Scan License Plate</h2>
+    <form action="/upload-plate" method="post" enctype="multipart/form-data">
+      <input type="file" name="image" accept="image/*" capture="environment" />
+      <br><br>
+      <button type="submit">Scan Plate</button>
+    </form>
+  `);
+});
+
+//
+// 🚀 HANDLE PHOTO UPLOAD + SCAN
+//
+app.post('/upload-plate', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.send('No image uploaded');
+    }
+
+    const plate = await recognizePlateFromBuffer(req.file.buffer);
+
+    if (plate) {
+      return res.send(`Plate detected: ${plate}`);
+    }
+
+    res.send('No plate detected');
+
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.send('Error scanning plate');
+  }
+});
+
+//
+// 🚀 URL TEST ROUTE (optional)
+//
 app.get('/scan-plate', async (req, res) => {
   const imageUrl = req.query.url;
 
@@ -103,18 +191,22 @@ app.get('/scan-plate', async (req, res) => {
   const plate = await recognizePlateFromUrl(imageUrl);
 
   if (plate) {
-    res.send(`Plate detected: ${plate.toUpperCase()}`);
+    res.send(`Plate detected: ${plate}`);
   } else {
     res.send('No plate detected');
   }
 });
 
+//
 // ✅ HOMEPAGE
+//
 app.get('/', (req, res) => {
-  res.send('Server Running (License Plate)');
+  res.send('Server Running (Plate System Ready)');
 });
 
-// ✅ SERVER START
+//
+// ✅ START SERVER
+//
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
