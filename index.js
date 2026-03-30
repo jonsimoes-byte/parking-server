@@ -19,7 +19,10 @@ async function recognizePlateFromUrl(imageUrl) {
   try {
     const response = await axios.post(
       'https://api.platerecognizer.com/v1/plate-reader/',
-      { upload: imageUrl },
+      { 
+upload: imageUrl
+regions: ["us"]
+ },
       {
         headers: {
           Authorization: `Token ${process.env.PLATE_API_KEY}`
@@ -108,7 +111,7 @@ app.get('/scan-plate', async (req, res) => {
 
 // ✅ HOMEPAGE
 app.get('/', (req, res) => {
-  res.send('Server version 69');
+  res.send('Server Running (License Plate)');
 });
 
 // ✅ SERVER START
