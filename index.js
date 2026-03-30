@@ -146,15 +146,50 @@ https://bit.ly/SKParking`;
 //
 app.get('/upload', (req, res) => {
   res.send(`
-    <h2>Scan License Plate</h2>
-    <form action="/upload-plate" method="post" enctype="multipart/form-data">
-      <input type="file" name="image" accept="image/*" capture="environment" />
-      <br><br>
-      <button type="submit">Scan Plate</button>
-    </form>
+    <html>
+      <body style="text-align:center; font-family:sans-serif;">
+        <h2>Scan License Plate</h2>
+        <video id="video" width="300" autoplay></video>
+        <br><br>
+        <button onclick="capture()" style="font-size:20px;">Scan Plate</button>
+        <canvas id="canvas" style="display:none;"></canvas>
+
+        <script>
+          const video = document.getElementById('video');
+
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(stream => {
+              video.srcObject = stream;
+            });
+
+          function capture() {
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            context.drawImage(video, 0, 0);
+
+            canvas.toBlob(blob => {
+              const formData = new FormData();
+              formData.append('image', blob, 'photo.jpg');
+
+              fetch('/upload-plate', {
+                method: 'POST',
+                body: formData
+              })
+              .then(res => res.text())
+              .then(data => {
+                document.body.innerHTML = "<h2>" + data + "</h2>";
+              });
+            }, 'image/jpeg');
+          }
+        </script>
+      </body>
+    </html>
   `);
 });
-
 //
 // 🚀 HANDLE PHOTO UPLOAD + SCAN
 //
