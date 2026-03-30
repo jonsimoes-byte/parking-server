@@ -108,7 +108,7 @@ app.get('/scan-plate', async (req, res) => {
 
 // ✅ HOMEPAGE
 app.get('/', (req, res) => {
-  res.send('Server is running');
+  res.send('Server version 69');
 });
 
 // ✅ SERVER START
