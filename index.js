@@ -18,17 +18,17 @@ const client = twilio(accountSid, authToken);
 async function recognizePlateFromUrl(imageUrl) {
   try {
     const response = await axios.post(
-      'https://api.platerecognizer.com/v1/plate-reader/',
-      { 
-upload: imageUrl
-regions: ["us"]
- },
-      {
-        headers: {
-          Authorization: `Token ${process.env.PLATE_API_KEY}`
-        }
-      }
-    );
+  'https://api.platerecognizer.com/v1/plate-reader/',
+  {
+    upload: imageUrl,
+    regions: ["us"]
+  },
+  {
+    headers: {
+      Authorization: `Token ${process.env.PLATE_API_KEY}`
+    }
+  }
+);
 
     const results = response.data.results;
 
