@@ -20,7 +20,7 @@ async function recognizePlateFromUrl(imageUrl) {
     const response = await axios.post(
   'https://api.platerecognizer.com/v1/plate-reader/',
   {
-    url: imageUrl,
+    upload_url: imageUrl,
     regions: ["us"]
   },
   {
