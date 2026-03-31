@@ -115,38 +115,37 @@ app.get('/', (req, res) => {
   res.send('🚗 Parking System Live');
 });
 app.get('/tenant', (req, res) => {
-  res.send(`
-    <html>
-      <body style="font-family:sans-serif; text-align:center;">
-        <h2>Tenant Parking Portal</h2>
+  res.send(`<!DOCTYPE html>
+<html>
+  <body style="font-family:sans-serif; text-align:center;">
+    <h2>Tenant Parking Portal</h2>
 
-        <h3>Add Plate</h3>
-        <form action="/add-plate" method="POST">
-          <input name="name" placeholder="Your Name or Unit" required /><br><br>
-          <input name="plate" placeholder="License Plate" required /><br><br>
-          <button>Add Plate</button>
-        </form>
+    <h3>Add Plate</h3>
+    <form action="/add-plate" method="POST">
+      <input name="name" placeholder="Your Name or Unit" required /><br><br>
+      <input name="plate" placeholder="License Plate" required /><br><br>
+      <button>Add Plate</button>
+    </form>
 
-        <br><hr><br>
+    <br><hr><br>
 
-        <h3>Remove Plate</h3>
-        <form action="/remove-plate" method="POST">
-          <input name="name" placeholder="Your Name or Unit" required /><br><br>
-          <input name="plate" placeholder="License Plate" required /><br><br>
-          <button>Remove Plate</button>
-        </form>
+    <h3>Remove Plate</h3>
+    <form action="/remove-plate" method="POST">
+      <input name="name" placeholder="Your Name or Unit" required /><br><br>
+      <input name="plate" placeholder="License Plate" required /><br><br>
+      <button>Remove Plate</button>
+    </form>
 
-        <br><hr><br>
+    <br><hr><br>
 
-        <h3>View Plates</h3>
-        <form action="/view-plates" method="GET">
-          <input name="name" placeholder="Your Name or Unit" required /><br><br>
-          <button>View Plates</button>
-        </form>
+    <h3>View Plates</h3>
+    <form action="/view-plates" method="GET">
+      <input name="name" placeholder="Your Name or Unit" required /><br><br>
+      <button>View Plates</button>
+    </form>
 
-      </body>
-    </html>
-  `);
+  </body>
+</html>`);
 });
 
 <h3>View My Plates</h3>
