@@ -24,6 +24,7 @@ const TWILIO_NUMBER = '+18339664635';
 
 // ================== DATABASE ==================
 const tenants = {};
+const visitors = [];
 
 // ================== HELPERS ==================
 
@@ -62,14 +63,33 @@ async function recognizePlateFromBuffer(buffer) {
     return null;
   }
 }
+function cleanVisitors() {
+  const now = Date.now();
 
+  for (let i = visitors.length - 1; i >= 0; i--) {
+    if (visitors[i].expires < now) {
+      visitors.splice(i, 1);
+    }
+  }
+}
 // 🔥 Check permit
 function isPlateValid(plate) {
-  return Object.values(tenants).some(list =>
-    list.includes(plate.toUpperCase())
-  );
-}
+  const formatted = plate.toUpperCase();
 
+  // ✅ Check tenant plates
+  const tenantValid = Object.values(tenants).some(list =>
+    list.includes(formatted)
+  );
+
+  if (tenantValid) return true;
+
+  // ✅ Check visitors
+  cleanVisitors();
+
+  const visitorValid = visitors.some(v => v.plate === formatted);
+
+  return visitorValid;
+}
 // 🔥 Send SMS
 async function sendViolationSMS(phone) {
   try {
@@ -123,7 +143,39 @@ app.post('/add-plate', (req, res) => {
 
   res.send('Plate added');
 });
+app.post('/add-visitor', (req, res) => {
+  const { plate, hours } = req.body;
 
+  if (!plate) {
+    return res.send('Missing plate');
+  }
+
+  const expiration = Date.now() + (hours || 24) * 60 * 60 * 1000;
+
+  visitors.push({
+    plate: plate.toUpperCase(),
+    expires: expiration
+  });
+
+  console.log('Visitors:', visitors);
+
+  res.send('Visitor pass added');
+});
+app.post('/remove-visitor', (req, res) => {
+  const { plate } = req.body;
+
+  const formatted = plate.toUpperCase();
+
+  const index = visitors.findIndex(v => v.plate === formatted);
+
+  if (index === -1) {
+    return res.send('Visitor not found');
+  }
+
+  visitors.splice(index, 1);
+
+  res.send('Visitor removed');
+});
 // 🚀 Camera scanner
 app.get('/upload', (req, res) => {
   res.send(`
