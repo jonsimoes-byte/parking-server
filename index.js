@@ -148,7 +148,6 @@ app.get('/tenant', (req, res) => {
     </html>
   `);
 });
-<br><hr><br>
 
 <h3>View My Plates</h3>
 <form action="/view-plates" method="GET">
