@@ -150,6 +150,30 @@ app.get('/tenant', (req, res) => {
   `);
 });
 
+<br><hr><br>
+
+<h3>View My Plates</h3>
+<form action="/view-plates" method="GET">
+  <input name="name" placeholder="Your Name or Unit" required /><br><br>
+  <button>View Plates</button>
+</form>
+app.get('/view-plates', (req, res) => {
+  const { name } = req.query;
+
+  if (!name || !tenants[name]) {
+    return res.send('No plates found');
+  }
+
+  const plates = tenants[name];
+
+  res.send(`
+    <h2>Plates for ${name}</h2>
+    <ul>
+      ${plates.map(p => `<li>${p}</li>`).join('')}
+    </ul>
+    <a href="/tenant">Back</a>
+  `);
+});
 app.post('/remove-plate', (req, res) => {
   const { name, plate } = req.body;
 
