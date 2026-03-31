@@ -114,7 +114,55 @@ https://bit.ly/SKParking`,
 app.get('/', (req, res) => {
   res.send('🚗 Parking System Live');
 });
+app.get('/tenant', (req, res) => {
+  res.send(`
+    <html>
+      <body style="font-family:sans-serif; text-align:center;">
+        <h2>Tenant Parking Portal</h2>
 
+        <h3>Add Plate</h3>
+        <form action="/add-plate" method="POST">
+          <input name="name" placeholder="Your Name or Unit" required /><br><br>
+          <input name="plate" placeholder="License Plate" required /><br><br>
+          <button>Add Plate</button>
+        </form>
+
+        <br><hr><br>
+
+        <h3>Remove Plate</h3>
+        <form action="/remove-plate" method="POST">
+          <input name="name" placeholder="Your Name or Unit" required /><br><br>
+          <input name="plate" placeholder="License Plate" required /><br><br>
+          <button>Remove Plate</button>
+        </form>
+
+        <br><hr><br>
+
+        <h3>Add Visitor Pass</h3>
+        <form action="/add-visitor" method="POST">
+          <input name="plate" placeholder="Visitor Plate" required /><br><br>
+          <input name="hours" placeholder="Hours (default 24)" /><br><br>
+          <button>Add Visitor</button>
+        </form>
+
+      </body>
+    </html>
+  `);
+});
+
+app.post('/remove-plate', (req, res) => {
+  const { name, plate } = req.body;
+
+  if (!tenants[name]) {
+    return res.send('Tenant not found');
+  }
+
+  const formatted = plate.toUpperCase();
+
+  tenants[name] = tenants[name].filter(p => p !== formatted);
+
+  res.send('Plate removed');
+});
 // ➕ Add plate
 app.post('/add-plate', (req, res) => {
   const { name, plate } = req.body;
