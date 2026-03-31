@@ -1,58 +1,33 @@
-const tenants = {};
-app.post('/add-plate', (req, res) => {
-  const { name, plate } = req.body;
-
-  if (!name || !plate) {
-    return res.send('Missing name or plate');
-  }
-
-  const formatted = plate.toUpperCase();
-
-  if (!tenants[name]) {
-    tenants[name] = [];
-  }
-
-  if (tenants[name].length >= 2) {
-    return res.send('Max 2 plates allowed');
-  }
-
-  if (tenants[name].includes(formatted)) {
-    return res.send('Plate already exists');
-  }
-
-  tenants[name].push(formatted);
-
-  res.send('Plate added');
-});
-function isPlateValid(plate) {
-  return Object.values(tenants).some(list =>
-    list.includes(plate.toUpperCase())
-  );
-}
-
 require('dotenv').config();
 
+// ================== IMPORTS ==================
 const express = require('express');
-const app = express();
-
 const twilio = require('twilio');
 const axios = require('axios');
 const multer = require('multer');
 const FormData = require('form-data');
 
+// ================== APP INIT ==================
+const app = express();
 const upload = multer();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const accountSid = process.env.ACCOUNT_SID;
-const authToken = process.env.AUTH_TOKEN;
+// ================== CONFIG ==================
+const client = twilio(
+  process.env.ACCOUNT_SID,
+  process.env.AUTH_TOKEN
+);
 
-const client = twilio(accountSid, authToken);
+const TWILIO_NUMBER = '+18339664635';
 
-//
-// 🔥 HELPER: Scan plate from uploaded file
-//
+// ================== DATABASE ==================
+const tenants = {};
+
+// ================== HELPERS ==================
+
+// 🔥 Plate recognition
 async function recognizePlateFromBuffer(buffer) {
   try {
     const formData = new FormData();
@@ -88,94 +63,68 @@ async function recognizePlateFromBuffer(buffer) {
   }
 }
 
-//
-// 🔥 OPTIONAL: scan from URL (for testing)
-//
-async function recognizePlateFromUrl(imageUrl) {
+// 🔥 Check permit
+function isPlateValid(plate) {
+  return Object.values(tenants).some(list =>
+    list.includes(plate.toUpperCase())
+  );
+}
+
+// 🔥 Send SMS
+async function sendViolationSMS(phone) {
   try {
-    const response = await axios.post(
-      'https://api.platerecognizer.com/v1/plate-reader/',
-      {
-        upload_url: imageUrl,
-        regions: ["us"]
-      },
-      {
-        headers: {
-          Authorization: `Token ${process.env.PLATE_API_KEY}`
-        }
-      }
-    );
+    await client.messages.create({
+      body: `S&K Parking Services
+Click here to pay and remove boot:
 
-    const results = response.data.results;
+https://bit.ly/SKParking`,
+      from: TWILIO_NUMBER,
+      to: phone
+    });
 
-    if (results && results.length > 0) {
-      return results[0].plate.toUpperCase();
-    }
-
-    return null;
-
+    console.log('SMS sent to', phone);
   } catch (err) {
-    console.error('Plate API error:', err.response?.data || err.message);
-    return null;
+    console.error('SMS error:', err.message);
   }
 }
 
-//
-// ✅ TEST SMS
-//
-app.get('/send-sms', async (req, res) => {
-  try {
-    await client.messages.create({
-      body: "Test SMS from your parking system 🚗",
-      from: '+18339664635',
-      to: '+19704570677'
-    });
+// ================== ROUTES ==================
 
-    res.send('SMS sent!');
-  } catch (err) {
-    console.error(err);
-    res.send('Error sending SMS');
-  }
+// ✅ Home
+app.get('/', (req, res) => {
+  res.send('🚗 Parking System Live');
 });
 
-//
-// ✅ MAIN SMS AUTOMATION
-//
-app.post('/request-sms', async (req, res) => {
-  try {
-    const from = req.body.From;
-    const lang = req.body.lang;
+// ➕ Add plate
+app.post('/add-plate', (req, res) => {
+  const { name, plate } = req.body;
 
-    res.sendStatus(200); // respond instantly
-
-    let message;
-
-    if (lang === 'es') {
-      message = `S&K Servicios de Estacionamiento
-Pague aquí para retirar el inmovilizador:
-
-https://bit.ly/SKParkingesp`;
-    } else {
-      message = `S&K Parking Services
-Click here to pay and remove boot:
-
-https://bit.ly/SKParking`;
-    }
-
-    await client.messages.create({
-      body: message,
-      from: '+18339664635',
-      to: from
-    });
-
-  } catch (err) {
-    console.error(err);
+  if (!name || !plate) {
+    return res.send('Missing name or plate');
   }
+
+  const formatted = plate.toUpperCase();
+
+  if (!tenants[name]) {
+    tenants[name] = [];
+  }
+
+  if (tenants[name].length >= 2) {
+    return res.send('Max 2 plates allowed');
+  }
+
+  if (tenants[name].includes(formatted)) {
+    return res.send('Plate already exists');
+  }
+
+  tenants[name].push(formatted);
+
+  console.log('Tenants:', tenants);
+
+  res.send('Plate added');
 });
 
-//
-// 🚀 PHONE UPLOAD PAGE (THIS IS YOUR REAL TOOL)
-//
+// 🚀 Camera scanner
 app.get('/upload', (req, res) => {
   res.send(`
     <html>
@@ -222,9 +171,8 @@ app.get('/upload', (req, res) => {
     </html>
   `);
 });
-//
-// 🚀 HANDLE PHOTO UPLOAD + SCAN
-//
+
+// 🚀 Scan + enforcement
 app.post('/upload-plate', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -233,59 +181,35 @@ app.post('/upload-plate', upload.single('image'), async (req, res) => {
 
     const plate = await recognizePlateFromBuffer(req.file.buffer);
 
-    if (plate) {
-      const valid = isPlateValid(plate);
-
-if (valid) {
-  return res.send(`
-    <h2 style="color:green;">✅ VALID PERMIT</h2>
-    <p>${plate}</p>
-  `);
-} else {
-  return res.send(`
-    <h2 style="color:red;">❌ NO PERMIT</h2>
-    <p>${plate}</p>
-  `);
-}
+    if (!plate) {
+      return res.send('No plate detected');
     }
 
-    res.send('No plate detected');
+    const valid = isPlateValid(plate);
+
+    if (valid) {
+      return res.send(`
+        <h2 style="color:green;">✅ VALID PERMIT</h2>
+        <p>${plate}</p>
+      `);
+    } else {
+      // 🔥 TRIGGER SMS (FOR NOW SEND TO YOU)
+      await sendViolationSMS('+19704570677');
+
+      return res.send(`
+        <h2 style="color:red;">❌ NO PERMIT</h2>
+        <p>${plate}</p>
+        <p>Payment link sent</p>
+      `);
+    }
 
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error(err);
     res.send('Error scanning plate');
   }
 });
 
-//
-// 🚀 URL TEST ROUTE (optional)
-//
-app.get('/scan-plate', async (req, res) => {
-  const imageUrl = req.query.url;
-
-  if (!imageUrl) {
-    return res.status(400).send('Provide ?url=IMAGE_URL');
-  }
-
-  const plate = await recognizePlateFromUrl(imageUrl);
-
-  if (plate) {
-    res.send(`Plate detected: ${plate}`);
-  } else {
-    res.send('No plate detected');
-  }
-});
-
-//
-// ✅ HOMEPAGE
-//
-app.get('/', (req, res) => {
-  res.send('Server Running (Plate System Ready)');
-});
-
-//
-// ✅ START SERVER
-//
+// ================== START ==================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
