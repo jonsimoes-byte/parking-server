@@ -1,3 +1,35 @@
+const tenants = {};
+app.post('/add-plate', (req, res) => {
+  const { name, plate } = req.body;
+
+  if (!name || !plate) {
+    return res.send('Missing name or plate');
+  }
+
+  const formatted = plate.toUpperCase();
+
+  if (!tenants[name]) {
+    tenants[name] = [];
+  }
+
+  if (tenants[name].length >= 2) {
+    return res.send('Max 2 plates allowed');
+  }
+
+  if (tenants[name].includes(formatted)) {
+    return res.send('Plate already exists');
+  }
+
+  tenants[name].push(formatted);
+
+  res.send('Plate added');
+});
+function isPlateValid(plate) {
+  return Object.values(tenants).some(list =>
+    list.includes(plate.toUpperCase())
+  );
+}
+
 require('dotenv').config();
 
 const express = require('express');
@@ -202,7 +234,19 @@ app.post('/upload-plate', upload.single('image'), async (req, res) => {
     const plate = await recognizePlateFromBuffer(req.file.buffer);
 
     if (plate) {
-      return res.send(`Plate detected: ${plate}`);
+      const valid = isPlateValid(plate);
+
+if (valid) {
+  return res.send(`
+    <h2 style="color:green;">✅ VALID PERMIT</h2>
+    <p>${plate}</p>
+  `);
+} else {
+  return res.send(`
+    <h2 style="color:red;">❌ NO PERMIT</h2>
+    <p>${plate}</p>
+  `);
+}
     }
 
     res.send('No plate detected');
