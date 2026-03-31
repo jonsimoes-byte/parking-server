@@ -138,18 +138,16 @@ app.get('/tenant', (req, res) => {
 
         <br><hr><br>
 
-        <h3>Add Visitor Pass</h3>
-        <form action="/add-visitor" method="POST">
-          <input name="plate" placeholder="Visitor Plate" required /><br><br>
-          <input name="hours" placeholder="Hours (default 24)" /><br><br>
-          <button>Add Visitor</button>
+        <h3>View Plates</h3>
+        <form action="/view-plates" method="GET">
+          <input name="name" placeholder="Your Name or Unit" required /><br><br>
+          <button>View Plates</button>
         </form>
 
       </body>
     </html>
   `);
 });
-
 <br><hr><br>
 
 <h3>View My Plates</h3>
