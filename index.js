@@ -111,23 +111,32 @@ app.get('/', (req, res) => {
 app.post('/request-sms', async (req, res) => {
   try {
     const from = req.body.From;
+    const lang = req.body.lang;
 
-    // respond instantly
     res.sendStatus(200);
 
-    await client.messages.create({
-      body: `S&K Parking Services
-Click here to pay and remove boot:
+    let message;
 
-https://bit.ly/SKParking`,
-      from: TWILIO_NUMBER,
+    if (lang === 'es') {
+      message = `S&K Servicios de Estacionamiento
+
+Pague aquí para retirar el inmovilizador:
+https://bit.ly/SKParkingesp`;
+    } else {
+      message = `S&K Parking Services
+
+Click here to pay and remove boot:
+https://bit.ly/SKParking`;
+    }
+
+    await client.messages.create({
+      body: message,
+      from: '+18339664635',
       to: from
     });
 
-    console.log('SMS sent to', from);
-
   } catch (err) {
-    console.error('Twilio error:', err);
+    console.error(err);
   }
 });
 
