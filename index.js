@@ -6,6 +6,7 @@ const twilio = require('twilio');
 const axios = require('axios');
 const multer = require('multer');
 const FormData = require('form-data');
+const XLSX = require('xlsx');
 
 // ================== APP INIT ==================
 const app = express();
@@ -22,9 +23,26 @@ const client = twilio(
 
 const TWILIO_NUMBER = '+18339664635';
 
-// ================== DATABASE ==================
-const tenants = {};
-const visitors = [];
+// ================== EXCEL ==================
+let excelPlates = [];
+
+function loadExcel() {
+  try {
+    const workbook = XLSX.readFile('plates.xlsx');
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(sheet);
+
+    excelPlates = data.map(row => row.plate.toUpperCase());
+
+    console.log('Loaded plates:', excelPlates);
+  } catch (err) {
+    console.error('Excel error:', err.message);
+  }
+}
+
+function isPlateValid(plate) {
+  return excelPlates.includes(plate.toUpperCase());
+}
 
 // ================== HELPERS ==================
 
@@ -63,33 +81,7 @@ async function recognizePlateFromBuffer(buffer) {
     return null;
   }
 }
-function cleanVisitors() {
-  const now = Date.now();
 
-  for (let i = visitors.length - 1; i >= 0; i--) {
-    if (visitors[i].expires < now) {
-      visitors.splice(i, 1);
-    }
-  }
-}
-// 🔥 Check permit
-function isPlateValid(plate) {
-  const formatted = plate.toUpperCase();
-
-  // ✅ Check tenant plates
-  const tenantValid = Object.values(tenants).some(list =>
-    list.includes(formatted)
-  );
-
-  if (tenantValid) return true;
-
-  // ✅ Check visitors
-  cleanVisitors();
-
-  const visitorValid = visitors.some(v => v.plate === formatted);
-
-  return visitorValid;
-}
 // 🔥 Send SMS
 async function sendViolationSMS(phone) {
   try {
@@ -114,136 +106,31 @@ https://bit.ly/SKParking`,
 app.get('/', (req, res) => {
   res.send('🚗 Parking System Live');
 });
-app.get('/tenant', (req, res) => {
-  res.send(`<!DOCTYPE html>
-<html>
-  <body style="font-family:sans-serif; text-align:center;">
-    <h2>Tenant Parking Portal</h2>
 
-    <h3>Add Plate</h3>
-    <form action="/add-plate" method="POST">
-      <input name="name" placeholder="Your Name or Unit" required /><br><br>
-      <input name="plate" placeholder="License Plate" required /><br><br>
-      <button>Add Plate</button>
-    </form>
+// 🔥 Twilio webhook (CRITICAL)
+app.post('/request-sms', async (req, res) => {
+  try {
+    const from = req.body.From;
 
-    <br><hr><br>
+    // respond instantly
+    res.sendStatus(200);
 
-    <h3>Remove Plate</h3>
-    <form action="/remove-plate" method="POST">
-      <input name="name" placeholder="Your Name or Unit" required /><br><br>
-      <input name="plate" placeholder="License Plate" required /><br><br>
-      <button>Remove Plate</button>
-    </form>
+    await client.messages.create({
+      body: `S&K Parking Services
+Click here to pay and remove boot:
 
-    <br><hr><br>
+https://bit.ly/SKParking`,
+      from: TWILIO_NUMBER,
+      to: from
+    });
 
-    <h3>View Plates</h3>
-    <form action="/view-plates" method="GET">
-      <input name="name" placeholder="Your Name or Unit" required /><br><br>
-      <button>View Plates</button>
-    </form>
+    console.log('SMS sent to', from);
 
-  </body>
-</html>`);
+  } catch (err) {
+    console.error('Twilio error:', err);
+  }
 });
 
-<h3>View My Plates</h3>
-<form action="/view-plates" method="GET">
-  <input name="name" placeholder="Your Name or Unit" required /><br><br>
-  <button>View Plates</button>
-</form>
-app.get('/view-plates', (req, res) => {
-  const { name } = req.query;
-
-  if (!name || !tenants[name]) {
-    return res.send('No plates found');
-  }
-
-  const plates = tenants[name];
-
-  res.send(`
-    <h2>Plates for ${name}</h2>
-    <ul>
-      ${plates.map(p => `<li>${p}</li>`).join('')}
-    </ul>
-    <a href="/tenant">Back</a>
-  `);
-});
-app.post('/remove-plate', (req, res) => {
-  const { name, plate } = req.body;
-
-  if (!tenants[name]) {
-    return res.send('Tenant not found');
-  }
-
-  const formatted = plate.toUpperCase();
-
-  tenants[name] = tenants[name].filter(p => p !== formatted);
-
-  res.send('Plate removed');
-});
-// ➕ Add plate
-app.post('/add-plate', (req, res) => {
-  const { name, plate } = req.body;
-
-  if (!name || !plate) {
-    return res.send('Missing name or plate');
-  }
-
-  const formatted = plate.toUpperCase();
-
-  if (!tenants[name]) {
-    tenants[name] = [];
-  }
-
-  if (tenants[name].length >= 2) {
-    return res.send('Max 2 plates allowed');
-  }
-
-  if (tenants[name].includes(formatted)) {
-    return res.send('Plate already exists');
-  }
-
-  tenants[name].push(formatted);
-
-  console.log('Tenants:', tenants);
-
-  res.send('Plate added');
-});
-app.post('/add-visitor', (req, res) => {
-  const { plate, hours } = req.body;
-
-  if (!plate) {
-    return res.send('Missing plate');
-  }
-
-  const expiration = Date.now() + (hours || 24) * 60 * 60 * 1000;
-
-  visitors.push({
-    plate: plate.toUpperCase(),
-    expires: expiration
-  });
-
-  console.log('Visitors:', visitors);
-
-  res.send('Visitor pass added');
-});
-app.post('/remove-visitor', (req, res) => {
-  const { plate } = req.body;
-
-  const formatted = plate.toUpperCase();
-
-  const index = visitors.findIndex(v => v.plate === formatted);
-
-  if (index === -1) {
-    return res.send('Visitor not found');
-  }
-
-  visitors.splice(index, 1);
-
-  res.send('Visitor removed');
-});
 // 🚀 Camera scanner
 app.get('/upload', (req, res) => {
   res.send(`
@@ -292,7 +179,7 @@ app.get('/upload', (req, res) => {
   `);
 });
 
-// 🚀 Scan + enforcement
+// 🚀 Scan + Excel validation
 app.post('/upload-plate', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -313,7 +200,6 @@ app.post('/upload-plate', upload.single('image'), async (req, res) => {
         <p>${plate}</p>
       `);
     } else {
-      // 🔥 TRIGGER SMS (FOR NOW SEND TO YOU)
       await sendViolationSMS('+19704570677');
 
       return res.send(`
@@ -329,7 +215,15 @@ app.post('/upload-plate', upload.single('image'), async (req, res) => {
   }
 });
 
+// 🔄 Reload Excel
+app.get('/reload-excel', (req, res) => {
+  loadExcel();
+  res.send('Excel reloaded');
+});
+
 // ================== START ==================
+loadExcel();
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
